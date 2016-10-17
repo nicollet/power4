@@ -52,25 +52,51 @@ function animate(td) {
 	}
 }
 
+function WriteMessage(message, button) {
+	HideMessage(); // not perfect, but does the job
+	var id = document.getElementById("message");
+	id.appendChild(document.createElement("h3")).
+		appendChild(document.createTextNode(message));
+	if (button == null) {
+		return;
+	}
+	var btn = document.createElement("button");
+	btn.appendChild(document.createTextNode(button));
+	id.appendChild(btn);
+	btn.addEventListener('click', function() {
+		init();
+	});
+}
+
 function click(e) {
 	if (end) { return; }
 	var x = Math.floor(e.offsetX * grid.width / canvas.width);
 	var td = fill_col(x, turn);
 	if (td == null) {
-		alert("Colon is full!");
+		WriteMessage("Colon is full!", null);
 		return;
 	}
 	if (count >= grid.width * grid.height) {
-		alert("Draw!");
-		init();
+		end = true;
+		WriteMessage("Draw!", "New Game");
 		return;
 	}
 
 	if (doesWin(td)) {
 		var msg = (turn == images.white) ? "White" : "Black";
-		alert(msg + " won.");
+		WriteMessage(msg + " won.", "New Game");
+		end = true;
+		return;
 	}
+	HideMessage();
 	turn = (turn == images.white) ? images.black : images.white;
+}
+
+function HideMessage() {
+	var id = document.getElementById("message");
+	while (id.firstChild != null) {
+		id.removeChild(id.firstChild);
+	}
 }
 
 function init() {
@@ -78,6 +104,8 @@ function init() {
 	count = 0;
 	end = false;
 	grid.length = 0;
+
+	HideMessage();
 	for (var y = 0; y < grid.height; y++) {
 		for (var x = 0; x < grid.width; x++) {
 			td = {};
@@ -87,6 +115,8 @@ function init() {
 			grid.push(td);
 		}
 	}
+
+	fillGrid(null);
 }
 
 var grid = [];
@@ -186,10 +216,9 @@ function fillGrid(miss) {
 }
 
 loadImages(sources, function() {
+		background = getImageBoard(canvas);
 		init();
 		// animate(canvas, ctx, startTime);
-		background = getImageBoard(canvas);
-		fillGrid(null);
 });
 
 // vim: set ts=2 sw=2 list:
