@@ -88,7 +88,7 @@ function click(e) {
 	var x = Math.floor(e.offsetX * grid.width / canvas.width);
 	var td = fill_col(x, turn);
 	if (td == null) {
-		WriteMessage("Colon is full!", null);
+		WriteMessage("Column is full!", null);
 		return;
 	}
 	if (count >= grid.width * grid.height) {
