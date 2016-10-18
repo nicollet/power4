@@ -1,16 +1,19 @@
 var images = {};
 var sources = {
 	black: 'black.png',
-	white: 'white.png'
+	black_w: 'black-w.png',
+	white: 'white.png',
+	white_w: 'white-w.png'
 };
-var canvas = document.getElementById('myCanvas');
-canvas.addEventListener('click', click);
-var ctx = canvas.getContext('2d');
+var canvas;
+var ctx;
 var background;
 var turn;
 var count;
 var end;
 var startTime;
+var grid;
+var wining_chips;
 
 function loadImages(sources, callback) {
 	var loadedImages = 0;
@@ -28,27 +31,39 @@ function loadImages(sources, callback) {
 	}
 }
 
+function DrawChip(image, x, y, alpha) {
+	var x1 = x * grid.caseSize + grid.casePadding;
+	var y1 = y * grid.caseSize + grid.casePadding;
+	ctx.globalAlpha = alpha;
+	ctx.drawImage(image, x1, y1, grid.imageSize, grid.imageSize);
+	ctx.globalAlpha = 1;
+}
+
 function animate(td) {
 	// update
 	var time = (new Date()).getTime() - startTime;
 
-	var linearSpeed = 0.2;
-	
 	// falling
-	var newY = linearSpeed * time * time / 1000 + 0.01 * time;
+	var newY = 0.1 * time * time / 1000 + 0.01 * time;
 	if (newY > td.y) { newY = td.y; }
 
 	// clear
 	fillGrid(td);
-	var x1 = td.x * grid.caseSize + grid.casePadding;
-	var y1 = newY * grid.caseSize + grid.casePadding;
-	ctx.drawImage(td.player, x1, y1, grid.imageSize, grid.imageSize);
+	DrawChip(td.player, td.x, td.y, 0.5);
+	DrawChip(td.player, td.x, newY, 1);
 
 	// request new frame
 	if (newY < td.y) {
 		requestAnimationFrame(function() {
 			animate(td);
 		});
+	} else {
+		var pwin = wining_chips;
+		var winSprite = (turn == images.white) ? images.white_w : images.black_w;
+		var l = (pwin.length>=4)?4:0;
+		for (var i=0 ; i<l; i++) {
+			DrawChip(winSprite, pwin[i].x, pwin[i].y, 1);
+		}
 	}
 }
 
@@ -82,7 +97,9 @@ function click(e) {
 		return;
 	}
 
-	if (doesWin(td)) {
+	var pwin = doesWin(td);
+	wining_chips = pwin;
+	if (pwin.length >= 4) {
 		var msg = (turn == images.white) ? "White" : "Black";
 		WriteMessage(msg + " won.", "New Game");
 		end = true;
@@ -90,6 +107,12 @@ function click(e) {
 	}
 	HideMessage();
 	turn = (turn == images.white) ? images.black : images.white;
+}
+
+function mouse(e) {
+	if (end) { return; }
+	var x = Math.floor(e.offsetX * grid.width / canvas.width);
+	fill_col(x, turn, true);
 }
 
 function HideMessage() {
@@ -119,25 +142,16 @@ function init() {
 	fillGrid(null);
 }
 
-var grid = [];
-grid.width = 7;
-grid.height = 6;
-canvas.height = Math.round(canvas.width * 6 / 7);
-grid.size = grid.width * grid.height;
-grid.caseSize = parseInt(canvas.width) / parseInt(grid.width); // in pixels
-grid.casePadding = 4;
-grid.imageSize = grid.caseSize - grid.casePadding*2;
-
-grid.get = function(x,y) {
-	if (x < 0 || x >= this.width) { return null; }
-	if (y < 0 || y >= this.height) { return null; }
-	return this[x + y*this.width];
-}
-
-function fill_col(x, turn) {
+function fill_col(x, turn, preview) {
+	if (end) return;
 	for (var y= grid.height -1; y>=0; --y) {
 		var td = grid.get(x, y);
 		if (td.player == "") {
+			if (preview == true) {
+				fillGrid(null);
+				DrawChip(turn, x, y, 0.5);
+				return;
+			}
 			td.player = turn;
 			td.x = x;
 			td.y = y;
@@ -150,30 +164,44 @@ function fill_col(x, turn) {
 	return null;
 }
 
-function compte(x, y, player, dx, dy) {
-	for (var i=1; i<=4; ++i) {
+
+function compte(x, y, player, dx, dy, pwin) {
+	for (var i=0; i<=4; ++i) {
+		var td = grid.get(x,y);
+		if (!td || td.player != player) return pwin;
+		pwin.add(x,y);
 		x += dx;
 		y += dy;
-		var td = grid.get(x,y);
-		if (!td || td.player != player) return i;
 	}
-	return i;
+	return pwin;
 }
 
 function compteDir(x, y, player, dx, dy) {
-	return compte(x, y, player, dx, dy) + compte(x, y, player, -dx, -dy) -1;
+	var pwin = [];
+	pwin.add = function(x, y) {
+		for (var i=0; i< this.length; i++) {
+			if (this[i].x == x && this[i].y == y) { return; }
+		}
+		this.push({x: x, y: y});
+	}
+	compte(x, y, player, dx, dy, pwin) + compte(x, y, player, -dx, -dy, pwin);
+	return pwin;
 }
 
 function doesWin(td) {
 	// horizontal
-	if (compteDir(td.x, td.y, turn, 1, 0) >= 4) { return true; }
+	var pwin = compteDir(td.x, td.y, turn, 1, 0);
+ 	if (pwin.length >= 4) { return pwin; }
 	// vertical
-	if (compteDir(td.x, td.y, turn, 0, 1) >= 4) { return true; }
+	pwin = compteDir(td.x, td.y, turn, 0, 1);
+ 	if (pwin.length >= 4) { return pwin; }
 	// diag1
-	if (compteDir(td.x, td.y, turn, 1, 1) >= 4) { return true; }
+	pwin = compteDir(td.x, td.y, turn, 1, 1);
+ 	if (pwin.length >= 4) { return pwin; }
 	// diag2
-	if (compteDir(td.x, td.y, turn, 1, -1) >= 4) { return true; }
-	return false;
+	pwin = compteDir(td.x, td.y, turn, 1, -1);
+ 	if (pwin.length >= 4) { return pwin; }
+	return [];
 }
 
 function getImageBoard(canvas) {
@@ -207,18 +235,34 @@ function fillGrid(miss) {
 			var td = grid.get(x,y);
 			if (td == miss) { continue; }
 			if ( td.player != "") {
-				var x1 = x * grid.caseSize + grid.casePadding;
-				var y1 = y * grid.caseSize + grid.casePadding;
-				ctx.drawImage(td.player, x1, y1, grid.imageSize, grid.imageSize);
+				DrawChip(td.player, x, y, 1);
 			}
 		}
 	}
 }
 
 loadImages(sources, function() {
-		background = getImageBoard(canvas);
-		init();
-		// animate(canvas, ctx, startTime);
+	canvas = document.getElementById('myCanvas');
+	ctx = canvas.getContext('2d');
+	grid = [];
+	grid.width = 7;
+	grid.height = 6;
+	canvas.height = Math.round(canvas.width * 6 / 7);
+	grid.size = grid.width * grid.height;
+	grid.caseSize = parseInt(canvas.width) / parseInt(grid.width); // in pixels
+	grid.casePadding = 4;
+	grid.imageSize = grid.caseSize - grid.casePadding*2;
+
+	grid.get = function(x,y) {
+		if (x < 0 || x >= this.width) { return null; }
+		if (y < 0 || y >= this.height) { return null; }
+		return this[x + y*this.width];
+	}
+
+	background = getImageBoard(canvas);
+	init();
+	canvas.addEventListener('click', click);
+	canvas.addEventListener('mousemove', mouse);
 });
 
 // vim: set ts=2 sw=2 list:
