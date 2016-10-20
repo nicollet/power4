@@ -124,7 +124,13 @@ function click(e) {
 	var x = Math.floor(e.offsetX * grid.width / canvas.width);
 	handle_play(x);
 	if (turn == images.black) {
-		play_auto();
+		canvas.removeEventListener('click', click);
+		canvas.removeEventListener('mousemove', mouse);
+		setTimeout(function() {
+			play_auto();
+			canvas.addEventListener('click', click);
+			canvas.addEventListener('mousemove', mouse);
+		}, 400);
 	}
 }
 
