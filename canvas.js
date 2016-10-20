@@ -11,7 +11,6 @@ var background;
 var turn;
 var count;
 var end;
-var startTime;
 var grid;
 var wining_chips;
 
@@ -39,7 +38,7 @@ function DrawChip(image, x, y, alpha) {
 	ctx.globalAlpha = 1;
 }
 
-function animate(td) {
+function animate(td, startTime) {
 	// update
 	var time = (new Date()).getTime() - startTime;
 
@@ -49,13 +48,15 @@ function animate(td) {
 
 	// clear
 	fillGrid(td);
-	DrawChip(td.player, td.x, td.y, 0.5);
+	if (td.player != images.black) {
+		DrawChip(td.player, td.x, td.y, 0.5);
+	}
 	DrawChip(td.player, td.x, newY, 1);
 
 	// request new frame
 	if (newY < td.y) {
 		requestAnimationFrame(function() {
-			animate(td);
+			animate(td, startTime);
 		});
 	} else {
 		var pwin = wining_chips;
@@ -181,8 +182,7 @@ function fill_col(x, turn, preview) {
 			td.x = x;
 			td.y = y;
 			count++;
-			startTime = (new Date()).getTime();
-			animate(td);
+			animate(td, (new Date()).getTime());
 			return td;
 		}
 	}
