@@ -83,10 +83,10 @@ function WriteMessage(message, button) {
 	});
 }
 
-function click(e) {
-	if (end) { return; }
-	var x = Math.floor(e.offsetX * grid.width / canvas.width);
-	var td = fill_col(x, turn);
+
+function handle_play(x) {
+	// console.log("handle_play", turn);
+	var td = fill_col(x, turn, false);
 	if (td == null) {
 		WriteMessage("Column is full!", null);
 		return;
@@ -107,6 +107,25 @@ function click(e) {
 	}
 	HideMessage();
 	turn = (turn == images.white) ? images.black : images.white;
+}
+
+function play_auto() {
+	var x = 0;
+	var td = null;
+	while (td == null) {
+		x = Math.floor(Math.random() * 7);
+		td = fill_col(x, turn, true);
+	}
+	handle_play(x);
+}
+
+function click(e) {
+	if (end) { return; }
+	var x = Math.floor(e.offsetX * grid.width / canvas.width);
+	handle_play(x);
+	if (turn == images.black) {
+		play_auto();
+	}
 }
 
 function mouse(e) {
@@ -150,7 +169,7 @@ function fill_col(x, turn, preview) {
 			if (preview == true) {
 				fillGrid(null);
 				DrawChip(turn, x, y, 0.5);
-				return;
+				return td;
 			}
 			td.player = turn;
 			td.x = x;
