@@ -122,25 +122,42 @@ function ia_random() {
 	return x;
 }
 
-function ia_defense(my_turn, grid) {
-	var my_points = [];
-	var max_points = -1;
+function getBestScore(turn, grid) {
+	var score = [];
+	score.max = -1;
 
 	for (var i=0; i< grid.width; i++) {
 		var ngrid = grid.clone();
 		var y = getMaxCol(ngrid, i);
-		var td = ngrid.get(i, y);
-		td.player = my_turn;
+		if (y == null) {
+			score.push(-1);
+		} else {
+			var td = ngrid.get(i, y);
+			td.player = turn;
 
-		var pwin = doesWin(td, ngrid, my_turn);
-		my_points.push(pwin.length);
-		if (pwin.length > max_points) { max_points = pwin.length; }
+			var pwin = doesWin(td, ngrid, turn);
+			score.push(pwin.length);
+			if (pwin.length > score.max) { score.max = pwin.length; }
+		}
 	}
-	// console.log(count, my_points);
-	// pick a random max_points column
-	var x = 6;
-	for (var item=-1; item < max_points; item = my_points[x]) {
-		x = Math.floor(Math.random()*my_points.length);
+	// console.log(count, turn, score);
+	return score;
+}
+
+function ia_defense(my_turn, grid) {
+	var myScore = getBestScore(my_turn, grid);
+	var opTurn = (my_turn == images.black) ? images.white : images.black;
+	var opScore = getBestScore(opTurn, grid);
+
+	// console.log("opScore: ", opScore);
+	// console.log("myScore: ", myScore);
+
+	var score = (opScore.max>myScore.max) ? opScore : myScore;
+
+	// pick a random myScore.max column
+	var x=6;
+	while (score[x] < score.max) {
+		x = Math.floor(Math.random()*score.length);
 	}
 	return x;
 }
