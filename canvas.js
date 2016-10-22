@@ -1,3 +1,5 @@
+"use strict";
+
 var images = {};
 var sources = {
 	black: 'black.png',
@@ -98,7 +100,7 @@ function handle_play(x) {
 		return;
 	}
 
-	var pwin = doesWin(td);
+	var pwin = doesWin(td, grid, turn);
 	wining_chips = pwin;
 	if (pwin.length >= 4) {
 		var msg = (turn == images.white) ? "White" : "Black";
@@ -110,13 +112,42 @@ function handle_play(x) {
 	turn = (turn == images.white) ? images.black : images.white;
 }
 
-function play_auto() {
+function ia_random() {
 	var x = 0;
 	var td = null;
 	while (td == null) {
 		x = Math.floor(Math.random() * 7);
 		td = fill_col(x, turn, true);
 	}
+	return x;
+}
+
+function ia_defense(my_turn, grid) {
+	var my_points = [];
+	var max_points = -1;
+
+	for (var i=0; i< grid.width; i++) {
+		var ngrid = grid.clone();
+		var y = getMaxCol(ngrid, i);
+		var td = ngrid.get(i, y);
+		td.player = my_turn;
+
+		var pwin = doesWin(td, ngrid, my_turn);
+		my_points.push(pwin.length);
+		if (pwin.length > max_points) { max_points = pwin.length; }
+	}
+	// console.log(count, my_points);
+	// pick a random max_points column
+	var x = 6;
+	for (var item=-1; item < max_points; item = my_points[x]) {
+		x = Math.floor(Math.random()*my_points.length);
+	}
+	return x;
+}
+
+function play_auto() {
+	// var x = ia_random();
+	var x = ia_defense(turn, grid);
 	handle_play(x);
 }
 
@@ -157,7 +188,7 @@ function init() {
 	HideMessage();
 	for (var y = 0; y < grid.height; y++) {
 		for (var x = 0; x < grid.width; x++) {
-			td = {};
+			var td = {};
 			td.x = x;
 			td.y = y;
 			td.player = "";
@@ -168,29 +199,35 @@ function init() {
 	fillGrid(null);
 }
 
-function fill_col(x, turn, preview) {
-	if (end) return;
+function getMaxCol(grid, x) {
 	for (var y= grid.height -1; y>=0; --y) {
 		var td = grid.get(x, y);
-		if (td.player == "") {
-			if (preview == true) {
-				fillGrid(null);
-				DrawChip(turn, x, y, 0.5);
-				return td;
-			}
-			td.player = turn;
-			td.x = x;
-			td.y = y;
-			count++;
-			animate(td, (new Date()).getTime());
-			return td;
-		}
+		if (td.player == "") { return y; }
 	}
 	return null;
 }
 
+function fill_col(x, turn, preview) {
+	if (end) return;
+	var y = getMaxCol(grid,x);
+	var td = grid.get(x, y);
+	if (td != null) {
+		if (preview == true) {
+			fillGrid(null);
+			DrawChip(turn, x, y, 0.5);
+			return td;
+		}
+		td.player = turn;
+		td.x = x;
+		td.y = y;
+		count++;
+		animate(td, (new Date()).getTime());
+	}
+	return td;
+}
 
-function compte(x, y, player, dx, dy, pwin) {
+
+function compte(x, y, player, dx, dy, pwin, grid) {
 	for (var i=0; i<=4; ++i) {
 		var td = grid.get(x,y);
 		if (!td || td.player != player) return pwin;
@@ -198,10 +235,9 @@ function compte(x, y, player, dx, dy, pwin) {
 		x += dx;
 		y += dy;
 	}
-	return pwin;
 }
 
-function compteDir(x, y, player, dx, dy) {
+function compteDir(x, y, player, dx, dy, grid) {
 	var pwin = [];
 	pwin.add = function(x, y) {
 		for (var i=0; i< this.length; i++) {
@@ -209,24 +245,29 @@ function compteDir(x, y, player, dx, dy) {
 		}
 		this.push({x: x, y: y});
 	}
-	compte(x, y, player, dx, dy, pwin) + compte(x, y, player, -dx, -dy, pwin);
+	compte(x, y, player, dx, dy, pwin, grid);
+	compte(x, y, player, -dx, -dy, pwin, grid);
 	return pwin;
 }
 
-function doesWin(td) {
+function doesWin(td, grid, turn) {
 	// horizontal
-	var pwin = compteDir(td.x, td.y, turn, 1, 0);
+	var pwin = compteDir(td.x, td.y, turn, 1, 0, grid);
+	var maxpwin = pwin;
  	if (pwin.length >= 4) { return pwin; }
 	// vertical
-	pwin = compteDir(td.x, td.y, turn, 0, 1);
+	pwin = compteDir(td.x, td.y, turn, 0, 1, grid);
+	if (pwin.length > maxpwin.length) { maxpwin = pwin; }
  	if (pwin.length >= 4) { return pwin; }
 	// diag1
-	pwin = compteDir(td.x, td.y, turn, 1, 1);
+	pwin = compteDir(td.x, td.y, turn, 1, 1, grid);
+	if (pwin.length > maxpwin.length) { maxpwin = pwin; }
  	if (pwin.length >= 4) { return pwin; }
 	// diag2
-	pwin = compteDir(td.x, td.y, turn, 1, -1);
+	pwin = compteDir(td.x, td.y, turn, 1, -1, grid);
+	if (pwin.length > maxpwin.length) { maxpwin = pwin; }
  	if (pwin.length >= 4) { return pwin; }
-	return [];
+	return maxpwin;
 }
 
 function getImageBoard(canvas) {
@@ -278,10 +319,31 @@ loadImages(sources, function() {
 	grid.casePadding = 4;
 	grid.imageSize = grid.caseSize - grid.casePadding*2;
 
+
 	grid.get = function(x,y) {
 		if (x < 0 || x >= this.width) { return null; }
 		if (y < 0 || y >= this.height) { return null; }
 		return this[x + y*this.width];
+	};
+
+	grid.clone = function() {
+		var n = [];
+		for (var i=0; i<this.size; i++) {
+			var td = this[i];
+			var ntd = {};
+			for (var k in td) { ntd[k] = td[k]; }
+			n.push(ntd);
+		}
+		n.length = this.length;
+		n.size = this.size;
+		n.width = this.width;
+		n.height = this.height;
+		n.get = function(x,y) {
+			if (x < 0 || x >= this.width) { return null; }
+			if (y < 0 || y >= this.height) { return null; }
+			return this[x + y*this.width];
+		};
+		return n;
 	}
 
 	background = getImageBoard(canvas);
