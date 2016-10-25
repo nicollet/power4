@@ -89,7 +89,7 @@ function WriteMessage(message, button) {
 
 function handle_play(x) {
 	// console.log("handle_play", turn);
-	var td = fill_col(x, turn, false);
+	var td = fill_col(x, turn, false, grid, true);
 	if (td == null) {
 		WriteMessage("Column is full!", null);
 		return;
@@ -109,7 +109,7 @@ function handle_play(x) {
 		return;
 	}
 	HideMessage();
-	turn = (turn == images.white) ? images.black : images.white;
+	turn = nextTurn(turn);
 }
 
 function ia_random() {
@@ -117,7 +117,7 @@ function ia_random() {
 	var td = null;
 	while (td == null) {
 		x = Math.floor(Math.random() * 7);
-		td = fill_col(x, turn, true);
+		td = fill_col(x, turn, true, grid, true);
 	}
 	return x;
 }
@@ -146,7 +146,7 @@ function getBestScore(turn, grid) {
 
 function ia_defense(my_turn, grid) {
 	var myScore = getBestScore(my_turn, grid);
-	var opTurn = (my_turn == images.black) ? images.white : images.black;
+	var opTurn = nextTurn(my_turn);
 	var opScore = getBestScore(opTurn, grid);
 
 	// console.log("opScore: ", opScore);
@@ -186,7 +186,7 @@ function click(e) {
 function mouse(e) {
 	if (end) { return; }
 	var x = Math.floor(e.offsetX * grid.width / canvas.width);
-	fill_col(x, turn, true);
+	fill_col(x, turn, true, grid, true);
 }
 
 function HideMessage() {
@@ -224,21 +224,21 @@ function getMaxCol(grid, x) {
 	return null;
 }
 
-function fill_col(x, turn, preview) {
+function fill_col(x, turn, preview, grid, display) {
 	if (end) return;
 	var y = getMaxCol(grid,x);
 	var td = grid.get(x, y);
 	if (td != null) {
 		if (preview == true) {
-			fillGrid(null);
-			DrawChip(turn, x, y, 0.5);
+			if (display) {
+				fillGrid(null);
+				DrawChip(turn, x, y, 0.5);
+			}
 			return td;
 		}
 		td.player = turn;
-		td.x = x;
-		td.y = y;
 		count++;
-		animate(td, (new Date()).getTime());
+		if (display) { animate(td, (new Date()).getTime()); }
 	}
 	return td;
 }
@@ -309,6 +309,10 @@ function getImageBoard(canvas) {
 	var image = new Image();
 	image.src = cvs2.toDataURL("image/png");
 	return image;
+}
+
+function nextTurn(turn) {
+	return (turn == images.white) ? images.black : images.white;
 }
 
 function fillGrid(miss) {
