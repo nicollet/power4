@@ -122,41 +122,81 @@ function ia_random() {
 	return x;
 }
 
-function getBestScore(turn, grid) {
+function max(a, b) {
+	return (a>b)?a:b;
+}
+
+function min(a, b) {
+	return (a<b)?a:b;
+}
+
+const MAXREC = 5;
+
+function getMinScore(turn, grid, reclim) {
 	var score = [];
-	score.max = -1;
 
 	for (var i=0; i< grid.width; i++) {
 		var ngrid = grid.clone();
 		var y = getMaxCol(ngrid, i);
 		if (y == null) {
-			score.push(-1);
+			score.push(1000);
 		} else {
 			var td = ngrid.get(i, y);
 			td.player = turn;
 
-			var pwin = doesWin(td, ngrid, turn);
-			score.push(pwin.length);
-			if (pwin.length > score.max) { score.max = pwin.length; }
+			var pwin = -doesWin(td, ngrid, turn).length;
+			if (pwin <= -4) {
+				score.push(pwin);
+			} else if (reclim < MAXREC) {
+				var below = getMaxScore(nextTurn(turn), ngrid, reclim+1);
+				var max_below = Math.max( ...below );
+				score.push( max_below );
+			} else {
+				score.push(pwin);
+			}
 		}
 	}
-	// console.log(count, turn, score);
+	return score;
+}
+
+function getMaxScore(turn, grid, reclim) {
+	var score = [];
+
+	for (var i=0; i< grid.width; i++) {
+		var ngrid = grid.clone();
+		var y = getMaxCol(ngrid, i);
+		if (y == null) {
+			score.push(-1000);
+		} else {
+			var td = ngrid.get(i, y);
+			td.player = turn;
+
+			var pwin = doesWin(td, ngrid, turn).length;
+			if (pwin >= 4) {
+				score.push(pwin);
+			} else if (reclim < MAXREC) {
+			  var below = getMinScore(nextTurn(turn), ngrid, reclim+1);
+			  var min_below = Math.min( ...below );
+			  score.push( min_below );
+			} else {
+				score.push(pwin);
+			}
+		}
+	}
+	if (reclim == 0) {
+		console.log("max: ", score);
+	}
 	return score;
 }
 
 function ia_defense(my_turn, grid) {
-	var myScore = getBestScore(my_turn, grid);
-	var opTurn = nextTurn(my_turn);
-	var opScore = getBestScore(opTurn, grid);
+	var myScore = getMaxScore(my_turn, grid, 0);
+	var score = myScore;
 
-	// console.log("opScore: ", opScore);
-	// console.log("myScore: ", myScore);
+	var max = Math.max(...score);
 
-	var score = (opScore.max>myScore.max) ? opScore : myScore;
-
-	// pick a random myScore.max column
 	var x=6;
-	while (score[x] < score.max) {
+	while (score[x] < max) {
 		x = Math.floor(Math.random()*score.length);
 	}
 	return x;
@@ -355,6 +395,7 @@ loadImages(sources, function() {
 			for (var k in td) { ntd[k] = td[k]; }
 			n.push(ntd);
 		}
+		n.clone = this.clone;
 		n.length = this.length;
 		n.size = this.size;
 		n.width = this.width;
