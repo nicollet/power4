@@ -146,7 +146,8 @@ function getMinScore(turn, grid, reclim) {
 
 			var pwin = -doesWin(td, ngrid, turn).length;
 			if (pwin <= -4) {
-				score.push(pwin);
+				score.push(-200);
+				return score;
 			} else if (reclim < MAXREC) {
 				var below = getMaxScore(nextTurn(turn), ngrid, reclim+1);
 				var max_below = Math.max( ...below );
@@ -173,7 +174,8 @@ function getMaxScore(turn, grid, reclim) {
 
 			var pwin = doesWin(td, ngrid, turn).length;
 			if (pwin >= 4) {
-				score.push(pwin);
+				score.push(200);
+				return score;
 			} else if (reclim < MAXREC) {
 			  var below = getMinScore(nextTurn(turn), ngrid, reclim+1);
 			  var min_below = Math.min( ...below );
@@ -259,6 +261,7 @@ function init() {
 function getMaxCol(grid, x) {
 	for (var y= grid.height -1; y>=0; --y) {
 		var td = grid.get(x, y);
+		if (td == null) { return null; }
 		if (td.player == "") { return y; }
 	}
 	return null;
@@ -379,7 +382,6 @@ loadImages(sources, function() {
 	grid.caseSize = parseInt(canvas.width) / parseInt(grid.width); // in pixels
 	grid.casePadding = 4;
 	grid.imageSize = grid.caseSize - grid.casePadding*2;
-
 
 	grid.get = function(x,y) {
 		if (x < 0 || x >= this.width) { return null; }
