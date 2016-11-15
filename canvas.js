@@ -146,14 +146,14 @@ function getMinScore(turn, grid, reclim) {
 
 			var pwin = -doesWin(td, ngrid, turn).length;
 			if (pwin <= -4) {
-				score.push(-200);
+				score.push(-200 - reclim * 0.01);
 				return score;
 			} else if (reclim < MAXREC) {
 				var below = getMaxScore(nextTurn(turn), ngrid, reclim+1);
 				var max_below = Math.max( ...below );
 				score.push( max_below );
 			} else {
-				score.push(pwin);
+				score.push(pwin - reclim*0.01);
 			}
 		}
 	}
@@ -174,19 +174,16 @@ function getMaxScore(turn, grid, reclim) {
 
 			var pwin = doesWin(td, ngrid, turn).length;
 			if (pwin >= 4) {
-				score.push(200);
+				score.push(200 + reclim * 0.01);
 				return score;
 			} else if (reclim < MAXREC) {
 			  var below = getMinScore(nextTurn(turn), ngrid, reclim+1);
 			  var min_below = Math.min( ...below );
 			  score.push( min_below );
 			} else {
-				score.push(pwin);
+				score.push(pwin + reclim*0.01);
 			}
 		}
-	}
-	if (reclim == 0) {
-		console.log("max: ", score);
 	}
 	return score;
 }
@@ -194,10 +191,11 @@ function getMaxScore(turn, grid, reclim) {
 function ia_defense(my_turn, grid) {
 	var myScore = getMaxScore(my_turn, grid, 0);
 	var score = myScore;
+	console.log(score);
 
 	var max = Math.max(...score);
 
-	var x=6;
+	var x=Math.floor(Math.random()*score.length);
 	while (score[x] < max) {
 		x = Math.floor(Math.random()*score.length);
 	}
